@@ -9,14 +9,6 @@ use std::process::{exit, Command, Stdio};
     about = "Interactive ripgrep + fzf file search, with echo fallback"
 )]
 struct Cli {
-    /// Text to echo (if provided, behaves like echo instead of searching)
-    #[arg(value_name = "TEXT")]
-    words: Vec<String>,
- 
-    /// Do not print the trailing newline (echo mode only)
-    #[arg(short = 'n')]
-    no_newline: bool,
- 
     /// Directory to search in (defaults to current directory)
     #[arg(short = 'd', long = "dir", value_name = "DIR")]
     dir: Option<PathBuf>,
@@ -52,44 +44,44 @@ fn interactive_grep(dir: Option<PathBuf>) -> std::io::Result<Option<String>> {
  
     match out.status.code() {
         Some(0) => {
+
             let sel = String::from_utf8_lossy(&out.stdout).trim_end().to_string();
-            Ok(if sel.is_empty() { None } else { Some(sel) })
+            Ok(if sel.is_empty() { None } else {
+                let mut it = sel.splitn(3, ':');
+                let file_name = it.next().unwrap_or("").to_string();
+                let full_path = PathBuf::from(&search_dir).join(&file_name);
+                Some(full_path.to_string_lossy().into_owned()) })
         }
         _ => Ok(None),
     }
 }
- 
+
+//fn open_editor
+
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
  
-    // If words were passed, behave like echo
-    if !cli.words.is_empty() {
-        let mut cmd = Command::new("echo");
-        if cli.no_newline {
-            cmd.arg("-n");
+    let path: String = match interactive_grep(cli.dir)? {
+        Some(line) => { 
+            //let mut it = line.splitn(3, ':');
+            //let path = it.next().unwrap_or("").to_string();
+            //println!("{line}");
+            line
         }
-        cmd.args(&cli.words);
-        match cmd.status() {
-            Ok(status) => exit(status.code().unwrap_or(0)),
-            Err(err) => {
-                eprintln!("dscribe: could not run `echo`: {err}");
-                exit(1);
-            }
-        }
-    }
- 
-    // Otherwise run the interactive finder
-    match interactive_grep(cli.dir)? {
-        Some(line) => {
-            // line == "path:lineno:matched text"
-            let mut it = line.splitn(3, ':');
-            let path = it.next().unwrap_or("");
-            let lineno = it.next().unwrap_or("");
-            println!("{path}:{lineno}");
-        }
-        None => eprintln!("nothing selected"),
-    }
- 
+        None => {
+            eprintln!("Exited without selection");
+            String::new()    
+        },
+    };
+    
+    let editor = std::env::var("EDITOR").unwrap_or_else(|_| {
+        if cfg!(target_os = "windows") {"nvim".into() } else {"notepad".into() }
+    });
+    //println!("{editor}");
+
+   Command::new(editor).arg(&path).status().expect("failed to launch editor"); 
+
     Ok(())
+
 }
 
