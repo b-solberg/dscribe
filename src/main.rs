@@ -1,19 +1,28 @@
-use clap::Parser;
-use std::path::PathBuf;
+use clap::{Parser, Subcommand}; 
+use std::path::PathBuf; 
 use std::process::{exit, Command, Stdio};
  
 #[derive(Parser, Debug)]
 #[command(
     name = "dscribe",
     version,
-    about = "Interactive ripgrep + fzf file search, with echo fallback"
+    about = "Interactive ripgrep + fzf file search"
 )]
 struct Cli {
     /// Directory to search in (defaults to current directory)
     #[arg(short = 'd', long = "dir", value_name = "DIR")]
     dir: Option<PathBuf>,
+    
+    #[command(subcommand)]
+    command: Option<Commands>,
 }
- 
+
+#[derive(Subcommand,Debug)]
+enum Commands {
+    AddDate
+}
+
+
 fn interactive_grep(dir: Option<PathBuf>) -> std::io::Result<Option<String>> {
     let search_dir = match dir {
         Some(ref d) => d.clone(),
@@ -60,17 +69,24 @@ fn interactive_grep(dir: Option<PathBuf>) -> std::io::Result<Option<String>> {
 
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
+
+    match &cli.command {
+        Some (Commands::AddDate) => {
+            println!("TODO Add Date function/TUI");
+        }
+        None => {},
+    }
  
-    let path: String = match interactive_grep(cli.dir)? {
+    let path: Option<String> = match interactive_grep(cli.dir)? {
         Some(line) => { 
             //let mut it = line.splitn(3, ':');
             //let path = it.next().unwrap_or("").to_string();
             //println!("{line}");
-            line
+            Some(line)
         }
         None => {
             eprintln!("Exited without selection");
-            String::new()    
+            None    
         },
     };
     
@@ -79,8 +95,12 @@ fn main() -> std::io::Result<()> {
     });
     //println!("{editor}");
 
-   Command::new(editor).arg(&path).status().expect("failed to launch editor"); 
+    match path {
+       Some(file_path) => {Command::new(editor).arg(&file_path).status().expect("Failed to Launch Editor");},
+       None => {},
 
+    }
+       
     Ok(())
 
 }
