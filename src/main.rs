@@ -1,74 +1,21 @@
-use clap::{Parser, Subcommand}; 
+// use clap::{Parser, Subcommand}; 
+mod cli;
+use crate::cli::*;
+
+mod searcher;
+use crate::searcher::*;
+
+mod tui;
+use crate::tui::*;
+
+mod editor;
+use crate::editor::*;
+
 use std::path::PathBuf; 
 use std::process::{exit, Command, Stdio};
- 
-#[derive(Parser, Debug)]
-#[command(
-    name = "dscribe",
-    version,
-    about = "Interactive ripgrep + fzf file search"
-)]
-struct Cli {
-    /// Directory to search in (defaults to current directory)
-    #[arg(short = 'd', long = "dir", value_name = "DIR")]
-    dir: Option<PathBuf>,
-    
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand,Debug)]
-enum Commands {
-    AddDate
-}
-
-
-fn interactive_grep(dir: Option<PathBuf>) -> std::io::Result<Option<String>> {
-    let search_dir = match dir {
-        Some(ref d) => d.clone(),
-        None => std::env::current_dir()?,
-    };
- 
-    let mut rg = Command::new("rg")
-        .args(["--line-number", "--no-heading", "--color", "never", "."])
-        .current_dir(&search_dir)
-        .stdout(Stdio::piped())
-        .spawn()?;
- 
-    let rg_out = rg.stdout.take().expect("rg stdout was piped");
- 
-    let fzf = Command::new("fzf")
-        .args([
-            "--delimiter", ":",
-            "--preview", "bat --style=numbers --color=always --highlight-line {2} {1}",
-            "--preview-window", "right:60%",
-        ])
-        .stdin(Stdio::from(rg_out))
-        .stdout(Stdio::piped())
-        .current_dir(&search_dir)
-        .spawn()?;
- 
-    let out = fzf.wait_with_output()?;
-    let _ = rg.wait();
- 
-    match out.status.code() {
-        Some(0) => {
-
-            let sel = String::from_utf8_lossy(&out.stdout).trim_end().to_string();
-            Ok(if sel.is_empty() { None } else {
-                let mut it = sel.splitn(3, ':');
-                let file_name = it.next().unwrap_or("").to_string();
-                let full_path = PathBuf::from(&search_dir).join(&file_name);
-                Some(full_path.to_string_lossy().into_owned()) })
-        }
-        _ => Ok(None),
-    }
-}
-
-//fn open_editor
 
 fn main() -> std::io::Result<()> {
-    let cli = Cli::parse();
+    let cli = cli::Cli::parse();
 
     match &cli.command {
         Some (Commands::AddDate) => {
@@ -77,31 +24,9 @@ fn main() -> std::io::Result<()> {
         None => {},
     }
  
-    let path: Option<String> = match interactive_grep(cli.dir)? {
-        Some(line) => { 
-            //let mut it = line.splitn(3, ':');
-            //let path = it.next().unwrap_or("").to_string();
-            //println!("{line}");
-            Some(line)
-        }
-        None => {
-            eprintln!("Exited without selection");
-            None    
-        },
-    };
+    let path = searcher::file_search(cli.dir);
     
-    let editor = std::env::var("EDITOR").unwrap_or_else(|_| {
-        if cfg!(target_os = "windows") {"nvim".into() } else {"notepad".into() }
-    });
-    //println!("{editor}");
-
-    match path {
-       Some(file_path) => {Command::new(editor).arg(&file_path).status().expect("Failed to Launch Editor");},
-       None => {},
-
-    }
-       
+    editor::launch_editor(get_editor(), path);
     Ok(())
-
 }
 
