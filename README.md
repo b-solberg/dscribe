@@ -2,7 +2,13 @@
 
 This is a port of a shell script for searching my notes using ripgrep and fzf
 
+Ripgrep and fzf are currrently external dependencies
+
 # TODO
+
+- remove dependencies
+  - add skim and grep-searcher
+- add config file support
 - remove searching+mathcing by line number
 - add TUI for handling front matter
   - add pure text calender front matter parsing/writing
