@@ -17,6 +17,7 @@ use ratatui::buffer::Buffer;
 use ratatui::text::Text;
 use ratatui::symbols::border;
 use ratatui::widgets::Paragraph;
+use ratatui::widgets::Borders;
 
 use time::{Date, Month, OffsetDateTime};
 
@@ -101,12 +102,12 @@ impl App {
         let date = self.date_cursor;
         
         let mut event_store = CalendarEventStore::today(Style::default().red().bold());
-        event_store.add(date, Style::default().blue().bold().on_light_yellow());
-        let mut monthly = Monthly::new(
+        event_store.add(date, Style::default().red().bold().on_light_yellow());
+        let monthly = Monthly::new(
             date,
             event_store,
         )
-        .block(Block::new().padding(Padding::new(0, 0, 2, 0)))
+        .block(Block::new().borders(Borders::ALL))
         .show_month_header(Modifier::BOLD)
         .show_weekdays_header(Modifier::ITALIC);
         monthly.render(area, buf);
@@ -116,9 +117,9 @@ impl App {
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1);
-        let horizontal = Layout::horizontal([Constraint::Percentage(50); 2]).spacing(1);
+        //let horizontal = Layout::horizontal([Constraint::Percentage(50); 2]).spacing(1);
         let [top, main] = area.layout(&vertical);
-        let [left, right] = main.layout(&horizontal);
+        //let [left, right] = main.layout(&horizontal);
         let title = Line::from_iter([
             Span::from("Calendar Widget").bold(),
             Span::from(" (Press 'q' to quit)"),
@@ -126,6 +127,6 @@ impl Widget for &App {
 
         title.centered().render(top, buf);
 
-        self.render_current_month(left, buf);
+        self.render_current_month(main, buf);
     }
 }

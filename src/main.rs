@@ -21,7 +21,7 @@ fn main() -> std::io::Result<()> {
     match &cli.command {
         Some (Commands::AddDate) => {
             //println!("TODO Add Date function/TUI");
-            tui::enter_tui();
+            let _ = tui::enter_tui();
         }
         None => {},
     }
