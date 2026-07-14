@@ -1,65 +1,131 @@
+#![allow(unused_imports)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
+use std::io;
 use color_eyre::Result;
-use crossterm::event;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::DefaultTerminal;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::calendar::{CalendarEventStore, Monthly};
 use ratatui::widgets::{Block, Padding};
+use ratatui::widgets::Widget;
 use ratatui::Frame;
+use ratatui::buffer::Buffer;
+use ratatui::text::Text;
+use ratatui::symbols::border;
+use ratatui::widgets::Paragraph;
+
 use time::{Date, Month, OffsetDateTime};
 
+pub fn enter_tui() -> io::Result<()> {
+       ratatui::run(|terminal| App::default().run(terminal))
+} 
 
-pub fn enter_tui() -> Result<()> {
-    ratatui::run(|terminal| loop {
-        terminal.draw(render)?;
-        if event::read()?.is_key_press() {
-            break Ok(());
+#[derive(Debug)]
+pub struct App {
+    exit: bool,
+    date_cursor: Date,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            exit: false,
+            date_cursor: OffsetDateTime::now_local().expect("U oh no").date(),
         }
-    })
+    }
 }
 
-fn render(frame: &mut Frame) {
-    let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1);
-    let horizontal = Layout::horizontal([Constraint::Percentage(50); 2]).spacing(1);
-    let [top, main] = frame.area().layout(&vertical);
-    let [left, right] = main.layout(&horizontal);
+impl App {
+    /// runs the application's main loop until the user quits
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
+            self.handle_events()?;
+        }
+        Ok(())
+    }
 
-    let title = Line::from_iter([
-        Span::from("Calendar Widget").bold(),
-        Span::from(" (Press 'q' to quit)"),
-    ]);
-    frame.render_widget(title.centered(), top);
+    fn draw(&self, frame: &mut Frame) {
+        frame.render_widget(self, frame.area());
+    }
 
-    render_current_month(frame, left);
-    render_styled_month(frame, right);
-}
 
-/// Render the current month calendar.
-fn render_current_month(frame: &mut Frame, area: Rect) {
-    let date = OffsetDateTime::now_utc().date();
+    /// updates the application's state based on user input
+    fn handle_events(&mut self) -> io::Result<()> {
+        match event::read()? {
+            // it's important to check that the event is a key press event as
+            // crossterm also emits key release and repeat events on Windows.
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                self.handle_key_event(key_event)
+            }
+            _ => {}
+        };
+        Ok(())
+    }
 
-    let monthly = Monthly::new(
-        date,
-        CalendarEventStore::today(Style::default().red().bold()),
-    )
-    .block(Block::new().padding(Padding::new(0, 0, 2, 0)))
-    .show_month_header(Modifier::BOLD)
-    .show_weekdays_header(Modifier::ITALIC);
-    frame.render_widget(monthly, area);
-}
+    fn handle_key_event(&mut self, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => self.exit(),
+            KeyCode::Esc => self.exit(),
+            KeyCode::Tab => self.next_day(),
+            KeyCode::Char('l') => self.next_day(),
+            KeyCode::Right => self.next_day(),
+            KeyCode::Backspace=> self.prev_day(),
+            KeyCode::Left => self.prev_day(),
+            KeyCode::Char('h') => self.prev_day(),
+            KeyCode::Down=> for _ in 0..7 {self.next_day()},
+            KeyCode::Char('j') => for _ in 0..7 {self.next_day()},
+            KeyCode::Up=> for _ in 0..7 {self.prev_day()},
+            KeyCode::Char('k') => for _ in 0..7 {self.prev_day()},
+            _ => {}
+        }
+    }
 
-/// Render an arbitrary month with more styles.
-fn render_styled_month(frame: &mut Frame, area: Rect) {
-    // Release date of the movie Ratatouille.
-    let date = Date::from_calendar_date(2007, Month::June, 29).unwrap();
+    fn exit(&mut self) {
+        self.exit = true;
+    }
+    
+    fn next_day(&mut self) {
+        self.date_cursor = self.date_cursor.next_day().unwrap();
+    }
 
-    let mut event_store = CalendarEventStore::today(Style::default().red().bold());
-    event_store.add(date, Style::default().blue().italic());
+    fn prev_day(&mut self) {
+        self.date_cursor = self.date_cursor.previous_day().unwrap();
+    }
 
-    let monthly = Monthly::new(date, event_store)
-        .show_surrounding(Modifier::DIM)
+    fn render_current_month(&self,area: Rect, buf: &mut Buffer) {
+        let date = self.date_cursor;
+        
+        let mut event_store = CalendarEventStore::today(Style::default().red().bold());
+        event_store.add(date, Style::default().blue().bold().on_light_yellow());
+        let mut monthly = Monthly::new(
+            date,
+            event_store,
+        )
+        .block(Block::new().padding(Padding::new(0, 0, 2, 0)))
         .show_month_header(Modifier::BOLD)
-        .show_weekdays_header(Style::default().bold().green())
-        .default_style(Style::default().bold().bg(Color::Rgb(50, 50, 50)));
-    frame.render_widget(monthly, area);
+        .show_weekdays_header(Modifier::ITALIC);
+        monthly.render(area, buf);
+    }
+}
+
+impl Widget for &App {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let vertical = Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).spacing(1);
+        let horizontal = Layout::horizontal([Constraint::Percentage(50); 2]).spacing(1);
+        let [top, main] = area.layout(&vertical);
+        let [left, right] = main.layout(&horizontal);
+        let title = Line::from_iter([
+            Span::from("Calendar Widget").bold(),
+            Span::from(" (Press 'q' to quit)"),
+        ]);
+
+        title.centered().render(top, buf);
+
+        self.render_current_month(left, buf);
+    }
 }

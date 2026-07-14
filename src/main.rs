@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 // use clap::{Parser, Subcommand}; 
 mod cli;
 use crate::cli::*;
