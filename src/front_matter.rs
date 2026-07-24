@@ -13,7 +13,7 @@ pub enum NoteState {
     ContainsFrontMatter {front_matter: Vec<String>, body: Vec<String>},
     NoFrontMatter,
 }
-pub fn write_file(file: String, contents: Vec<String>) {
+pub fn write_file(file: String, contents: &Vec<String>) {
     let file = File::create(file).unwrap();
 
     let mut writer = BufWriter::new(file);
@@ -24,20 +24,23 @@ pub fn write_file(file: String, contents: Vec<String>) {
 
     writer.flush().unwrap();
 }
-pub fn write_front_matter_cache(file: String, front_matter: Vec<String>) {
-    let cache_file_loc = cache_location(file);
-    println!("{:?}", cache_file_loc);
-    write_file(cache_file_loc.to_string_lossy().into_owned(), front_matter);
-}
-
-pub fn cache_location(file: String) -> PathBuf {
+pub fn write_front_matter_cache(file: Option<String>, front_matter: &Vec<String>) {
+    let file_name = Path::new(&file.unwrap())
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let tmp_file = tmp_file_extension(file_name);
     let base = cache_dir().unwrap_or_else(std::env::temp_dir);
     let dir = base.join("dscribe");
     std::fs::create_dir_all(&dir).ok();
-    dir.join(file)
+    let dir = dir.join(tmp_file);
+    println!("{:?}",dir);
+    write_file(dir.to_string_lossy().into_owned(), front_matter);
 }
 
-pub fn rewrite_body(file: String, body: Vec<String>) {
+
+pub fn rewrite_body(file: String, body: &Vec<String>) {
     let file_loc = File::create(file).unwrap();
     let mut writer = BufWriter::new(file_loc);
 
@@ -47,8 +50,8 @@ pub fn rewrite_body(file: String, body: Vec<String>) {
     writer.flush().unwrap();
 }
 
-pub fn join_front_matter_and_body(file: String) {
-    todo!()
+pub fn join_front_matter_and_body(file: String, front_matter: &Vec<String>) {
+   todo!(); 
 }
 
 pub fn tmp_file_extension(file: String) -> String {
@@ -70,7 +73,7 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
             "---" => true,
             _ => false 
         };
-        state = state.step_by_line(test_delimiter, line_number, &line);
+        state = state.step_by_line(test_delimiter, line_number);
         match state {
             Scan::Absent => break,
             _ => continue
@@ -78,8 +81,11 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
 
     }
     match state {
-        Scan::Absent | Scan::PotentiallyFrontMatter {start: _ }| Scan::Seeking => NoteState::NoFrontMatter,
-        Scan::ExitFrontMatter {start , end } => NoteState::ContainsFrontMatter { front_matter: collected_lines[start..=end].to_vec(), body: collected_lines[end+1..].to_vec()}
+        Scan::Absent | Scan::PotentiallyFrontMatter | Scan::Seeking => NoteState::NoFrontMatter,
+        Scan::ExitFrontMatter { end } => {
+            let body = collected_lines.split_off(end);
+            NoteState::ContainsFrontMatter { front_matter: collected_lines, body: body}
+        }
     }
     
 }
@@ -87,23 +93,18 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
 #[derive(Debug)]
 pub enum Scan {
     Seeking,
-    PotentiallyFrontMatter {start: usize},//, front_matter: Vec<String>},
-    ExitFrontMatter {start: usize, end:usize}, //front_matter: Vec<String>},
+    PotentiallyFrontMatter,// {start: usize},//, front_matter: Vec<String>},
+    ExitFrontMatter {end:usize}, //front_matter: Vec<String>},
     Absent,
 }
 
 impl Scan {
-    pub fn step_by_line(self, is_delimiter: bool, line_number:usize, line: &String) -> Scan {
+    pub fn step_by_line(self, is_delimiter: bool, line_number:usize) -> Scan {
         match self {
-            Scan::Seeking if is_delimiter => Scan::PotentiallyFrontMatter{ start: line_number },
-            
+            Scan::Seeking if is_delimiter => Scan::PotentiallyFrontMatter,
             Scan::Seeking => Scan::Absent,
-            Scan::PotentiallyFrontMatter { start } if is_delimiter => {
-                //front_matter.push(line); 
-                Scan::ExitFrontMatter {start, end:line_number }},
-            Scan::PotentiallyFrontMatter { start } if !is_delimiter => {
-                //front_matter.push(line); 
-                Scan::PotentiallyFrontMatter {start }},
+            Scan::PotentiallyFrontMatter if is_delimiter => Scan::ExitFrontMatter { end:line_number+1 },
+            Scan::PotentiallyFrontMatter if !is_delimiter => Scan::PotentiallyFrontMatter,
             _ => self
         }
     }

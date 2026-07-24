@@ -35,14 +35,14 @@ fn main() -> std::io::Result<()> {
 
     let path = searcher::file_search(cli.dir);
 
-    let tmp_file_name: String = path.clone()
-        .as_deref()
-        .map(|p| Path::new(p).with_extension("tmp").to_string_lossy().into_owned()).unwrap();
-    
+    //let tmp_file_name: String = path.clone()
+    //    .as_deref()
+    //    .map(|p| Path::new(p).with_extension("tmp").to_string_lossy().into_owned()).unwrap();
+    //
     let splitnote = scan_front_matter(path.clone());
 
     match splitnote {
-        NoteState::ContainsFrontMatter {front_matter, body } => {write_front_matter_cache(tmp_file_name, front_matter); rewrite_body(path.clone().unwrap(), body);},
+        NoteState::ContainsFrontMatter {front_matter, body} => {write_front_matter_cache(path.clone(), &front_matter); rewrite_body(path.clone().unwrap(),&body)}, 
         _ => (),
     }
 
