@@ -11,7 +11,7 @@ use std::path::{PathBuf, Path};
 #[derive(Debug)]
 pub enum NoteState {
     ContainsFrontMatter {front_matter: Vec<String>, body: Vec<String>},
-    NoFrontMatter,
+    NoFrontMatter {body: Vec<String>},
 }
 pub fn write_file(file: String, contents: &Vec<String>) {
     let file = File::create(file).unwrap();
@@ -24,21 +24,34 @@ pub fn write_file(file: String, contents: &Vec<String>) {
 
     writer.flush().unwrap();
 }
-pub fn write_front_matter_cache(file: Option<String>, front_matter: &Vec<String>) {
-    let file_name = Path::new(&file.unwrap())
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .into_owned();
-    let tmp_file = tmp_file_extension(file_name);
+
+fn cache_location() -> PathBuf {
     let base = cache_dir().unwrap_or_else(std::env::temp_dir);
     let dir = base.join("dscribe");
     std::fs::create_dir_all(&dir).ok();
+    dir
+}
+
+pub fn get_front_matter_cache(file: String) -> Vec<String> {
+    let tmp_file = tmp_file_extension(file);
+    let dir = cache_location();
+    let dir = dir.join(tmp_file);
+    let path = File::open(dir.to_string_lossy().into_owned()).unwrap();
+    let reader = BufReader::new(path);
+    let mut collected_lines: Vec<String> = Vec::new();
+    for line in reader.lines() {
+        collected_lines.push(line.unwrap())
+    }
+    collected_lines
+}
+
+pub fn write_front_matter_cache(file: Option<String>, front_matter: &Vec<String>) {
+    let tmp_file = tmp_file_extension(file.unwrap());
+    let dir = cache_location();
     let dir = dir.join(tmp_file);
     println!("{:?}",dir);
     write_file(dir.to_string_lossy().into_owned(), front_matter);
 }
-
 
 pub fn rewrite_body(file: String, body: &Vec<String>) {
     let file_loc = File::create(file).unwrap();
@@ -50,12 +63,36 @@ pub fn rewrite_body(file: String, body: &Vec<String>) {
     writer.flush().unwrap();
 }
 
-pub fn join_front_matter_and_body(file: String, front_matter: &Vec<String>) {
-   todo!(); 
+pub fn join_front_matter_and_body(file: Option<String>, front_matter_original: &mut Vec<String>) {
+    let state_post_edit = scan_front_matter(file.clone());
+    let mut new_front_matter: Vec<String> = Vec::new();
+    new_front_matter.push("---".to_string());
+
+    match state_post_edit {
+        NoteState::ContainsFrontMatter {mut front_matter, mut body} => {
+            new_front_matter.append(front_matter_original);
+            new_front_matter.append(&mut front_matter);
+            new_front_matter.push("---".to_string());
+            new_front_matter.append(&mut body);
+            println!("{:?}", new_front_matter);
+            write_file(file.unwrap(), &new_front_matter);
+        },
+        NoteState::NoFrontMatter {mut body} => {
+            new_front_matter.append(front_matter_original);
+            new_front_matter.push("---".to_string());
+            new_front_matter.append(&mut body);
+            write_file(file.unwrap(), &new_front_matter);
+        }, 
+    }
 }
 
 pub fn tmp_file_extension(file: String) -> String {
-    Path::new(&file).with_extension("tmp").to_string_lossy().into_owned()
+    let file_name = Path::new(&file)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    Path::new(&file_name).with_extension("tmp").to_string_lossy().into_owned()
 
 }
 
@@ -74,16 +111,17 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
             _ => false 
         };
         state = state.step_by_line(test_delimiter, line_number);
-        match state {
-            Scan::Absent => break,
-            _ => continue
-        }
-
+        
     }
     match state {
-        Scan::Absent | Scan::PotentiallyFrontMatter | Scan::Seeking => NoteState::NoFrontMatter,
+        Scan::Absent | Scan::PotentiallyFrontMatter | Scan::Seeking => {
+            println!("{:?}", collected_lines);
+            NoteState::NoFrontMatter {body:collected_lines}},
         Scan::ExitFrontMatter { end } => {
             let body = collected_lines.split_off(end);
+            println!("{:?}", body);
+            collected_lines.pop(); collected_lines.remove(0);
+            println!("{:?}", collected_lines);
             NoteState::ContainsFrontMatter { front_matter: collected_lines, body: body}
         }
     }

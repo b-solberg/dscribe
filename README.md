@@ -14,8 +14,7 @@ Ripgrep and fzf are currrently external dependencies
   - add pure text calender front matter parsing/writing
   - add tags system
 - add functions to remove front matter upon open. replace front matter when done in editor
+    - currently finds, removes, and re-adds front matter while opening and finally closing
+        - no error handling or edges cases handled yet
 - add link based system across notes
-- break project across files
-    - CLI logic
-    - TUI logic
-    - searching notes
+- need to handle errors and remove all unwraps

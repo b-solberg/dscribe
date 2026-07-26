@@ -45,9 +45,11 @@ fn main() -> std::io::Result<()> {
         NoteState::ContainsFrontMatter {front_matter, body} => {write_front_matter_cache(path.clone(), &front_matter); rewrite_body(path.clone().unwrap(),&body)}, 
         _ => (),
     }
+    
+    editor::launch_editor(get_editor(), path.clone());
 
-    editor::launch_editor(get_editor(), path);
-
+    let mut original_front_matter = get_front_matter_cache(path.clone().unwrap());
+    join_front_matter_and_body(path.clone(), &mut original_front_matter);
 
     Ok(())
 }
