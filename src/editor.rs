@@ -1,7 +1,4 @@
-#![allow(unused_imports)]
-
-pub use std::path::PathBuf; 
-pub use std::process::{exit, Command, Stdio};
+pub use std::process::{Command};
 
 pub fn get_editor() -> String {
     std::env::var("EDITOR").unwrap_or_else(|_| {

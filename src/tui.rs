@@ -1,25 +1,17 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 use std::io;
-use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::DefaultTerminal;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::calendar::{CalendarEventStore, Monthly};
-use ratatui::widgets::{Block, Padding};
+use ratatui::widgets::{Block};
 use ratatui::widgets::Widget;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
-use ratatui::text::Text;
-use ratatui::symbols::border;
-use ratatui::widgets::Paragraph;
 use ratatui::widgets::Borders;
 
-use time::{Date, Month, OffsetDateTime};
+use time::{Date, OffsetDateTime};
 
 pub fn enter_tui() -> io::Result<()> {
        ratatui::run(|terminal| App::default().run(terminal))
