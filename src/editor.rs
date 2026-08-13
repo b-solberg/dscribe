@@ -9,9 +9,7 @@ pub fn get_editor() -> String {
     })
 }
 
-pub fn launch_editor(editor: String, path:Option<String>) {
-    match path {
-        Some(file_path) => {Command::new(editor).arg(&file_path).status().expect("Failed to Launch Editor");},
-        None => {},
-    };
+pub fn launch_editor(editor: String, file_path:String) {
+        Command::new(editor).arg(&file_path).status().expect("Failed to Launch Editor on File");
+
 }

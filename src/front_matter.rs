@@ -5,7 +5,8 @@
 use dirs::cache_dir;
 
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, BufWriter, Write};
+use std::io::{self, BufRead, BufReader, BufWriter, Write, Error};
+use anyhow::{Context, Result};
 use std::path::{PathBuf, Path};
 
 #[derive(Debug)]
@@ -32,12 +33,12 @@ fn cache_location() -> PathBuf {
     dir
 }
 
-pub fn get_front_matter_cache(file: String) -> Vec<String> {
-    let tmp_file = tmp_file_extension(file);
+pub fn get_front_matter_cache(file_name: String) -> Vec<String> {
+    let tmp_file = tmp_file_extension(file_name);
     let dir = cache_location();
     let dir = dir.join(tmp_file);
-    let path = File::open(dir.to_string_lossy().into_owned()).unwrap();
-    let reader = BufReader::new(path);
+    let file = File::open(dir.to_string_lossy().into_owned()).unwrap();
+    let reader = BufReader::new(file);
     let mut collected_lines: Vec<String> = Vec::new();
     for line in reader.lines() {
         collected_lines.push(line.unwrap())
@@ -45,8 +46,8 @@ pub fn get_front_matter_cache(file: String) -> Vec<String> {
     collected_lines
 }
 
-pub fn write_front_matter_cache(file: Option<String>, front_matter: &Vec<String>) {
-    let tmp_file = tmp_file_extension(file.unwrap());
+pub fn write_front_matter_cache(file_name: String, front_matter: &Vec<String>) {
+    let tmp_file = tmp_file_extension(file_name);
     let dir = cache_location();
     let dir = dir.join(tmp_file);
     println!("{:?}",dir);
@@ -63,27 +64,28 @@ pub fn rewrite_body(file: String, body: &Vec<String>) {
     writer.flush().unwrap();
 }
 
-pub fn join_front_matter_and_body(file: Option<String>, front_matter_original: &mut Vec<String>) {
+pub fn join_front_matter_and_body(file: String, front_matter_original: &mut Vec<String>) -> Result<()> {
     let state_post_edit = scan_front_matter(file.clone());
     let mut new_front_matter: Vec<String> = Vec::new();
     new_front_matter.push("---".to_string());
 
-    match state_post_edit {
+    match state_post_edit? {
         NoteState::ContainsFrontMatter {mut front_matter, mut body} => {
             new_front_matter.append(front_matter_original);
             new_front_matter.append(&mut front_matter);
             new_front_matter.push("---".to_string());
             new_front_matter.append(&mut body);
             println!("{:?}", new_front_matter);
-            write_file(file.unwrap(), &new_front_matter);
+            write_file(file, &new_front_matter);
         },
         NoteState::NoFrontMatter {mut body} => {
             new_front_matter.append(front_matter_original);
             new_front_matter.push("---".to_string());
             new_front_matter.append(&mut body);
-            write_file(file.unwrap(), &new_front_matter);
+            write_file(file, &new_front_matter);
         }, 
     }
+    Ok(())
 }
 
 pub fn tmp_file_extension(file: String) -> String {
@@ -97,9 +99,9 @@ pub fn tmp_file_extension(file: String) -> String {
 }
 
 //I think this is done for now
-pub fn scan_front_matter(file: Option<String>) -> NoteState {
-    let path = File::open(file.unwrap()).unwrap();
-    let reader = BufReader::new(path);
+pub fn scan_front_matter(file_name: String) -> Result<NoteState> {
+    let file = File::open(file_name).context("Failed to Open File After Selection")?;
+    let reader = BufReader::new(file);
     let mut state = Scan::Seeking; 
     let mut collected_lines: Vec<String> = Vec::new();
     for (line_number, line) in reader.lines().enumerate() {
@@ -113,7 +115,7 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
         state = state.step_by_line(test_delimiter, line_number);
         
     }
-    match state {
+    Ok(match state {
         Scan::Absent | Scan::PotentiallyFrontMatter | Scan::Seeking => {
             println!("{:?}", collected_lines);
             NoteState::NoFrontMatter {body:collected_lines}},
@@ -124,7 +126,7 @@ pub fn scan_front_matter(file: Option<String>) -> NoteState {
             println!("{:?}", collected_lines);
             NoteState::ContainsFrontMatter { front_matter: collected_lines, body: body}
         }
-    }
+    })
     
 }
 

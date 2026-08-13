@@ -17,12 +17,15 @@ mod editor;
 use crate::editor::*;
 
 use std::path::Path; 
+use anyhow::{Context, Result};
 //use std::process::{exit, Command, Stdio};
 
 mod front_matter;
 use crate::front_matter::*;
 
-fn main() -> std::io::Result<()> {
+use anyhow::anyhow;
+
+fn main() -> Result<()> {
     let cli = cli::Cli::parse();
     
     match &cli.command {
@@ -33,22 +36,29 @@ fn main() -> std::io::Result<()> {
     }
     
 
-    let path = searcher::file_search(cli.dir);
+    let path = match searcher::file_search(cli.dir){
+        Ok(path) => path,
+        Err(e) => return Err(anyhow!("{}", e))
+
+
+
+    };
 
     //let tmp_file_name: String = path.clone()
     //    .as_deref()
     //    .map(|p| Path::new(p).with_extension("tmp").to_string_lossy().into_owned()).unwrap();
     //
+    
     let splitnote = scan_front_matter(path.clone());
 
-    match splitnote {
-        NoteState::ContainsFrontMatter {front_matter, body} => {write_front_matter_cache(path.clone(), &front_matter); rewrite_body(path.clone().unwrap(),&body)}, 
+    match splitnote? {
+        NoteState::ContainsFrontMatter {front_matter, body} => {write_front_matter_cache(path.clone(), &front_matter); rewrite_body(path.clone(),&body)}, 
         _ => (),
     }
     
     editor::launch_editor(get_editor(), path.clone());
 
-    let mut original_front_matter = get_front_matter_cache(path.clone().unwrap());
+    let mut original_front_matter = get_front_matter_cache(path.clone());
     join_front_matter_and_body(path.clone(), &mut original_front_matter);
 
     Ok(())
