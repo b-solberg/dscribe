@@ -1,11 +1,7 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 use dirs::cache_dir;
 
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, BufWriter, Write, Error};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use anyhow::{Context, Result};
 use std::path::{PathBuf, Path};
 
@@ -133,8 +129,8 @@ pub fn scan_front_matter(file_name: String) -> Result<NoteState> {
 #[derive(Debug)]
 pub enum Scan {
     Seeking,
-    PotentiallyFrontMatter,// {start: usize},//, front_matter: Vec<String>},
-    ExitFrontMatter {end:usize}, //front_matter: Vec<String>},
+    PotentiallyFrontMatter,
+    ExitFrontMatter {end:usize}, 
     Absent,
 }
 

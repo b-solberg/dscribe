@@ -1,24 +1,14 @@
-#![allow(unused_imports)]
-
-//use std::fs::File;
-//use std::io::{self, BufRead, BufReader};
-
-// use clap::{Parser, Subcommand}; 
 mod cli;
 use crate::cli::*;
 
 mod searcher;
-//use crate::searcher::*;
 
 mod tui;
-use crate::tui::*;
 
 mod editor;
 use crate::editor::*;
 
-use std::path::Path; 
-use anyhow::{Context, Result};
-//use std::process::{exit, Command, Stdio};
+use anyhow::{ Result};
 
 mod front_matter;
 use crate::front_matter::*;
@@ -59,7 +49,7 @@ fn main() -> Result<()> {
     editor::launch_editor(get_editor(), path.clone());
 
     let mut original_front_matter = get_front_matter_cache(path.clone());
-    join_front_matter_and_body(path.clone(), &mut original_front_matter);
+    join_front_matter_and_body(path.clone(), &mut original_front_matter)?;
 
     Ok(())
 }
