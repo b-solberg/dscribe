@@ -48,8 +48,8 @@ fn main() -> Result<()> {
     
     editor::launch_editor(get_editor(), path.clone());
 
-    let mut original_front_matter = get_front_matter_cache(path.clone());
-    join_front_matter_and_body(path.clone(), &mut original_front_matter)?;
+    let original_front_matter = get_front_matter_cache(path.clone());
+    join_front_matter_and_body(path.clone(), original_front_matter)?;
 
     Ok(())
 }

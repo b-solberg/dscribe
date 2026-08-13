@@ -1,4 +1,4 @@
-extern crate skim;
+// extern crate skim;
 use skim::prelude::*;
 use std::path::{Path, PathBuf};
 use std::io::ErrorKind;
@@ -31,7 +31,7 @@ impl SkimItem for MultiLineItem {
 
     }
 
-    fn display(&self, context: DisplayContext) -> Line<'_> {
+    fn display(&self, _context: DisplayContext) -> Line<'_> {
         self.file_name.as_str().into()
 
     }
@@ -58,11 +58,11 @@ pub fn file_search(dir: Option<PathBuf>) -> Result<String> {
                     match read_file(entry.path()){
                     Ok(Some(contents)) => items.push(MultiLineItem::new(entry.path().display().to_string(),contents)),
                     Ok(None) => continue,
-                    Err(e) => return Err(e)
+                    Err(e) => return Err(e.into())
                 }
             },
                 
-            Err(err) => println!("ERROR: {}", err),
+            Err(err) => return Err(err.into()),
         }
     }
     let skimitems: Vec<Arc<dyn SkimItem>> = items.
@@ -89,7 +89,7 @@ pub fn file_search(dir: Option<PathBuf>) -> Result<String> {
 
 fn skimoutput_to_string_single_selection(skim_output:SkimOutput) -> Result<String> {
     match skim_output.selected_items.iter().next() {
-        Some(out) => {println!("{}",out.output()) ; Ok(out.output().into())},
+        Some(out) => Ok(out.output().into()),
         None => return Err(anyhow!("Skim Output to String Failed"))
     }
 }
