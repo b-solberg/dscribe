@@ -5,17 +5,20 @@ use std::io::ErrorKind;
 use ignore::Walk;
 
 use anyhow::{Context, Result, anyhow};
+use ratatui::text::Line;
 use std::sync::Arc;
 
 struct MultiLineItem {
     body: String,
     oneline: String,
+    file_name: String
 }
 
 impl MultiLineItem {
-    fn new(body:String) -> Self {
+    fn new(file_name:String, text:String ) -> Self {
+        let body = format!("{}:{}",file_name,text);
         let oneline = body.replace('\n', "  ");
-        Self {body , oneline}
+        Self {body , oneline, file_name}
     }
 }
 
@@ -28,8 +31,12 @@ impl SkimItem for MultiLineItem {
 
     }
 
+    fn display(&self, context: DisplayContext) -> Line<'_> {
+        self.file_name.as_str().into()
+
+    }
     fn output(&self) ->  Cow<'_, str> {
-        Cow::Borrowed(&self.body)
+        Cow::Borrowed(&self.file_name)
     }
 }
 
@@ -49,7 +56,7 @@ pub fn file_search(dir: Option<PathBuf>) -> Result<String> {
                 }
                 else {
                     match read_file(entry.path()){
-                    Ok(Some(contents)) => items.push(MultiLineItem::new(format!("{}:{}", entry.path().display(),contents))),
+                    Ok(Some(contents)) => items.push(MultiLineItem::new(entry.path().display().to_string(),contents)),
                     Ok(None) => continue,
                     Err(e) => return Err(e)
                 }
@@ -69,6 +76,8 @@ pub fn file_search(dir: Option<PathBuf>) -> Result<String> {
         .preview("echo {}")
         .preview_window("right:60%")
         .height("100%")
+        .exact(true)
+        .no_hscroll(true)
         .build()
         .unwrap();
     match Skim::run_with(options, Some(rx)) {
@@ -80,7 +89,7 @@ pub fn file_search(dir: Option<PathBuf>) -> Result<String> {
 
 fn skimoutput_to_string_single_selection(skim_output:SkimOutput) -> Result<String> {
     match skim_output.selected_items.iter().next() {
-        Some(out) => Ok(out.output().into()),
+        Some(out) => {println!("{}",out.output()) ; Ok(out.output().into())},
         None => return Err(anyhow!("Skim Output to String Failed"))
     }
 }
