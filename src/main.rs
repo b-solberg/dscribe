@@ -34,11 +34,6 @@ fn main() -> Result<()> {
 
     };
 
-    //let tmp_file_name: String = path.clone()
-    //    .as_deref()
-    //    .map(|p| Path::new(p).with_extension("tmp").to_string_lossy().into_owned()).unwrap();
-    //
-    
     let splitnote = scan_front_matter(path.clone());
 
     match splitnote? {
@@ -51,6 +46,8 @@ fn main() -> Result<()> {
     let original_front_matter = get_front_matter_cache(path.clone());
     join_front_matter_and_body(path.clone(), original_front_matter)?;
 
+    clear_front_matter_cache(path.clone());
+    
     Ok(())
 }
 

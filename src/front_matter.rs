@@ -42,6 +42,17 @@ pub fn get_front_matter_cache(file_name: String) -> Result<Vec<String>> {
     Ok(collected_lines)
 }
 
+pub fn clear_front_matter_cache(file_name:String) {
+    let tmp_file = tmp_file_extension(file_name);
+    let dir = cache_location();
+    let dir = dir.join(tmp_file);
+    match std::fs::remove_file(dir.to_string_lossy().into_owned()) {
+        Ok(_s) => (),
+        Err(_e) => (),
+
+    };
+}
+
 pub fn write_front_matter_cache(file_name: String, front_matter: &Vec<String>) {
     let tmp_file = tmp_file_extension(file_name);
     let dir = cache_location();
@@ -84,10 +95,9 @@ pub fn join_front_matter_and_body(file: String, front_matter_original: Result<Ve
                 }, 
             }
         },
-    Err(_e) => return Ok(())
-    }
+    Err(_e) => ()
+    };
     Ok(())
-    
 }
 
 pub fn tmp_file_extension(file: String) -> String {

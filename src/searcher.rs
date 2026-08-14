@@ -16,7 +16,7 @@ struct MultiLineItem {
 
 impl MultiLineItem {
     fn new(file_name:String, text:String ) -> Self {
-        let body = format!("{}:{}",file_name,text);
+        let body = format!("{}:\n{}",file_name,text);
         let oneline = body.replace('\n', "  ");
         Self {body , oneline, file_name}
     }
