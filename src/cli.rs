@@ -1,4 +1,4 @@
-pub use clap::{Parser, Subcommand}; 
+pub use clap::{Parser}; 
 pub use std::path::PathBuf; 
 
 
@@ -10,14 +10,19 @@ pub use std::path::PathBuf;
 )]
 pub struct Cli {
     /// Directory to search in (defaults to current directory)
-    #[arg(short = 'd', long = "dir", value_name = "DIR")]
     pub dir: Option<PathBuf>,
-    
-    #[command(subcommand)]
-    pub command: Option<Commands>,
+
+    #[arg(short = 'a', long = "add_date")]
+    pub add_date: bool,
+
+    #[arg(short = 'f', long = "remove_front_matter")]
+    pub remove_front_matter: bool,
+
+    //#[command(subcommand)]
+    //pub command: Option<Commands>,
 }
 
-#[derive(Subcommand,Debug)]
-pub enum Commands {
-    AddDate
-}
+//#[derive(Subcommand,Debug)]
+//pub enum Commands {
+//    AddDate
+//}

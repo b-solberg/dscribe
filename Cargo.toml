@@ -12,4 +12,4 @@ dirs = "6.0.0"
 ignore = "0.4.33"
 ratatui = "0.30.2"
 skim = "5.6.4"
-time = "0.3.53"
+time = {version = "0.3.53", features = ["formatting"]}

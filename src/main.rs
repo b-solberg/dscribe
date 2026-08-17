@@ -14,17 +14,20 @@ mod front_matter;
 use crate::front_matter::*;
 
 use anyhow::anyhow;
+use time::format_description;
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();
-    
-    match &cli.command {
-        Some (Commands::AddDate) => {
-            let _ = tui::enter_tui();
-        }
-        None => {},
+    let mut added_date = String::new();
+    let format = format_description::parse_borrowed::<3>("[month]-[day]-[year]")?;
+    if cli.add_date {
+            match tui::select_date() {
+                Ok(Some(date)) => added_date = format!{"{}{}", added_date, date.format(&format)?},
+                Ok(None) => {},
+                Err(_) => {},
+            }
     }
-    
+    println!("{}", added_date);
 
     let path = match searcher::file_search(cli.dir){
         Ok(path) => path,
@@ -35,7 +38,9 @@ fn main() -> Result<()> {
     };
 
     let splitnote = scan_front_matter(path.clone());
-
+    if cli.remove_front_matter {
+        todo!();
+    }
     match splitnote? {
         NoteState::ContainsFrontMatter {front_matter, body} => {write_front_matter_cache(path.clone(), &front_matter); rewrite_body(path.clone(),&body)}, 
         _ => (),

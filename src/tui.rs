@@ -13,7 +13,7 @@ use ratatui::widgets::Borders;
 
 use time::{Date, OffsetDateTime};
 
-pub fn enter_tui() -> io::Result<()> {
+pub fn select_date() -> io::Result<Option<Date>> {
        ratatui::run(|terminal| App::default().run(terminal))
 } 
 
@@ -21,25 +21,27 @@ pub fn enter_tui() -> io::Result<()> {
 pub struct App {
     exit: bool,
     date_cursor: Date,
+    selected_date: Option<Date>
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
             exit: false,
-            date_cursor: OffsetDateTime::now_local().expect("U oh no").date(),
+            date_cursor: OffsetDateTime::now_local().expect("Local time not found").date(),
+            selected_date:None,
         }
     }
 }
 
 impl App {
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<Option<Date>> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
-        Ok(())
+        Ok(self.selected_date)
     }
 
     fn draw(&self, frame: &mut Frame) {
@@ -74,6 +76,7 @@ impl App {
             KeyCode::Char('j') => for _ in 0..7 {self.next_day()},
             KeyCode::Up=> for _ in 0..7 {self.prev_day()},
             KeyCode::Char('k') => for _ in 0..7 {self.prev_day()},
+            KeyCode::Enter => {self.selected_date = Some(self.date_cursor); self.exit()},
             _ => {}
         }
     }
