@@ -4,6 +4,7 @@ use crate::cli::*;
 mod searcher;
 
 mod tui;
+use crate::tui::convert_dates_to_string;
 
 mod editor;
 use crate::editor::*;
@@ -14,15 +15,13 @@ mod front_matter;
 use crate::front_matter::*;
 
 use anyhow::anyhow;
-use time::format_description;
 
 fn main() -> Result<()> {
     let cli = cli::Cli::parse();
     let mut added_date = String::new();
-    let format = format_description::parse_borrowed::<3>("[month]-[day]-[year]")?;
     if cli.add_date {
             match tui::select_date() {
-                Ok(Some(date)) => added_date = format!{"{}{}", added_date, date.format(&format)?},
+                Ok(Some(dates)) => added_date = convert_dates_to_string(&dates, "#"),
                 Ok(None) => {},
                 Err(_) => {},
             }
